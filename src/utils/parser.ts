@@ -55,21 +55,58 @@ export function parseMarkdownOrText(content: string): DataField[] {
   const tablePattern = /\|(.+)\|\n\|[\s:-]+\|\n((?:\|.+\|\n?)+)/g;
   let match;
   while ((match = tablePattern.exec(content)) !== null) {
-    const headers = match[1].split('|').map((h) => h.trim()).filter(Boolean);
-    const firstRow = match[2].split('\n')[0]?.split('|').map((c) => c.trim()).filter(Boolean) || [];
-    headers.forEach((h, idx) => {
-      if (!h || seen.has(h)) return;
-      seen.add(h);
-      const sample = firstRow[idx] || '';
-      const piiResult = detectPII(h, sample);
-      fields.push({
-        id: uuid(),
-        name: h,
-        sampleValue: sample,
-        isPersonalInfo: piiResult.isPII,
-        personalInfoType: piiResult.type,
+    const headerRow = match[1].split('|').map((h) => h.trim().toLowerCase());
+    const dataRows = match[2].split('\n').filter((l) => l.trim());
+
+    const nameColIdx = headerRow.findIndex((h) =>
+      h.includes('字段') || h.includes('名称') || h.includes('field') || h.includes('name') || h.includes('变量')
+    );
+    const valueColIdx = headerRow.findIndex((h) =>
+      h.includes('示例') || h.includes('样例') || h.includes('例子') || h.includes('value') || h.includes('sample') || h.includes('默认值')
+    ) || headerRow.findIndex((h) =>
+      h !== '' && h !== headerRow[nameColIdx]
+    ) || 1;
+    const descColIdx = headerRow.findIndex((h) =>
+      h.includes('说明') || h.includes('描述') || h.includes('desc') || h.includes('comment')
+    );
+
+    if (nameColIdx !== -1 && dataRows.length > 0) {
+      for (const row of dataRows) {
+        const cells = row.split('|').map((c) => c.trim());
+        const fieldName = cells[nameColIdx];
+        if (!fieldName || seen.has(fieldName) || /^[-\s:]+$/.test(fieldName)) continue;
+        seen.add(fieldName);
+
+        const sampleValue = cells[valueColIdx] || '';
+        const description = descColIdx !== -1 ? cells[descColIdx] || '' : '';
+        const piiResult = detectPII(fieldName, sampleValue);
+
+        fields.push({
+          id: uuid(),
+          name: fieldName,
+          sampleValue,
+          isPersonalInfo: piiResult.isPII,
+          personalInfoType: piiResult.type,
+          description,
+        });
+      }
+    } else {
+      const headers = match[1].split('|').map((h) => h.trim()).filter(Boolean);
+      const firstRow = dataRows[0]?.split('|').map((c) => c.trim()).filter(Boolean) || [];
+      headers.forEach((h, idx) => {
+        if (!h || seen.has(h)) return;
+        seen.add(h);
+        const sample = firstRow[idx] || '';
+        const piiResult = detectPII(h, sample);
+        fields.push({
+          id: uuid(),
+          name: h,
+          sampleValue: sample,
+          isPersonalInfo: piiResult.isPII,
+          personalInfoType: piiResult.type,
+        });
       });
-    });
+    }
   }
 
   const listPattern = /^[-*•\d.]\s*([^：:：\n]+)[：:]([^\n]*)$/gm;

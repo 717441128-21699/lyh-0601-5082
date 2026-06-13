@@ -173,7 +173,7 @@ export function FileImportModule() {
           </div>
           <button
             disabled={!hasFile}
-            onClick={() => setStep(2)}
+            onClick={() => setStep(1)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-all',
               hasFile

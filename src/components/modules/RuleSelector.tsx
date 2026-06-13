@@ -155,7 +155,7 @@ export function RuleSelectorModule() {
             </button>
             <button
               disabled={currentSession.industryRules.length === 0 && currentSession.dataTypeRules.length === 0}
-              onClick={() => setStep(3)}
+              onClick={() => setStep(2)}
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold transition-all',
                 currentSession.industryRules.length > 0 || currentSession.dataTypeRules.length > 0

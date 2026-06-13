@@ -100,6 +100,25 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
   setSessionName: (name) => set((st) => ({ currentSession: { ...st.currentSession, name } })),
 
   uploadFile: (fileName, fileType, content) => {
+    if (!fileName || !content) {
+      set((st) => ({
+        currentSession: {
+          ...st.currentSession,
+          fileName: undefined,
+          fileType: undefined,
+          fileContent: undefined,
+          fields: [],
+          issues: [],
+          score: 0,
+          status: 'idle',
+          completedAt: undefined,
+        },
+        currentStep: 0,
+        scanProgress: 0,
+        expandedIssueId: null,
+      }));
+      return;
+    }
     const parsed = parseDocument(content, fileType);
     set((st) => ({
       currentSession: {
@@ -108,8 +127,14 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
         fileType,
         fileContent: content,
         fields: parsed.fields,
+        issues: [],
+        score: 0,
+        status: 'idle',
+        completedAt: undefined,
       },
-      currentStep: Math.max(st.currentStep, 1),
+      currentStep: 1,
+      scanProgress: 0,
+      expandedIssueId: null,
     }));
   },
 
@@ -168,7 +193,12 @@ export const useComplianceStore = create<ComplianceState>((set, get) => ({
     const issues = st.currentSession.issues.map((i) => (i.id === id ? { ...i, ...patch } : i));
     const sorted = sortIssuesBySeverity(issues);
     const score = calculateScore(sorted);
-    return { currentSession: { ...st.currentSession, issues: sorted, score } };
+    const updatedSession = { ...st.currentSession, issues: sorted, score };
+    const sessions = st.sessions.map((s) =>
+      s.id === updatedSession.id ? updatedSession : s
+    );
+    persistSessions(sessions);
+    return { currentSession: updatedSession, sessions };
   }),
 
   setStep: (step) => set({ currentStep: step }),
